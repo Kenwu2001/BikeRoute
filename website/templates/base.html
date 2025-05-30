@@ -9,12 +9,11 @@
       integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7"
       crossorigin="anonymous"
     />
-
     <title>{% block title %}Home{% endblock %}</title>
   </head>
 
   <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
       <button
         class="navbar-toggler"
         type="button"
@@ -25,17 +24,18 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <div class="navbar-nav">
+          <a class="nav-item nav-link" id="home" href="/">Home</a>
           <a class="nav-item nav-link" id="login" href="/login">Login</a>
         </div>
       </div>
     </nav>
 
     <div class="container-fluid mt-3 text-start">
-      <!-- Added container-fluid for full-width and text-start for left alignment -->
       <h2>Current Location:</h2>
       <p id="location-info">Fetching location...</p>
-      <!-- This is the element your JS targets -->
-      <h1>{% block h1 %}test{% endblock %}</h1>
+      <h1>{% block h1 %}Default Page Title{% endblock %}</h1>
+
+      {% block content %}{% endblock %}
     </div>
 
     <script
