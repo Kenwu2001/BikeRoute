@@ -160,8 +160,17 @@ async function startLocationTracking() {
     const canUseLocation = await checkLocationPermission();
     if (!canUseLocation) return;
     
+    const locationInfo = document.getElementById("location-info");
+    const startBtn = document.getElementById('start-tracking-btn');
+    
     locationInfo.textContent = "Requesting location permission...";
     locationInfo.style.color = 'blue';
+    
+    // Update button state
+    if (startBtn) {
+        startBtn.innerHTML = '🔄 Starting...';
+        startBtn.disabled = true;
+    }
     
     // Start watching position with optimized options
     watchId = navigator.geolocation.watchPosition(
@@ -178,6 +187,8 @@ function stopLocationTracking() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
+        
+        const locationInfo = document.getElementById("location-info");
         locationInfo.textContent = "Location tracking stopped";
         locationInfo.style.color = 'gray';
         console.log('Stopped location tracking');
@@ -186,43 +197,67 @@ function stopLocationTracking() {
 
 // Start tracking when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page loaded, starting location tracking');
+    console.log('Page loaded, initializing tracking interface');
     console.log('Device type:', isMobile ? 'Mobile' : 'Desktop');
     console.log('Protocol:', location.protocol);
     console.log('Is secure:', isSecure);
     
+    const startInterface = document.getElementById('start-interface');
+    const trackingInterface = document.getElementById('tracking-interface');
+    const startBtn = document.getElementById('start-tracking-btn');
+    const stopBtn = document.getElementById('stop-tracking-btn');
+    
+    // Check if HTTPS is available
     if (!isSecure) {
-        locationInfo.innerHTML = `<strong>⚠️ HTTPS Required</strong><br>Geolocation requires HTTPS.<br>Deploy to Render to test on mobile.<br><br><small>Current URL: ${location.href}</small>`;
-        locationInfo.style.color = 'red';
+        startInterface.innerHTML = `
+            <div class="alert alert-danger text-center">
+                <h4>⚠️ HTTPS Required</h4>
+                <p>Geolocation requires HTTPS for security.</p>
+                <p>Deploy to Render or use localhost to test location tracking.</p>
+                <small>Current URL: ${location.href}</small>
+            </div>
+        `;
         return;
     }
     
+    // Show warning for desktop users
     if (!isMobile) {
-        locationInfo.innerHTML = `<strong>⚠️ Desktop Detected</strong><br>For best results, open this on your phone.<br>Desktop location is often inaccurate and won't change when walking.<br><br>Fetching location...`;
-        locationInfo.style.color = 'orange';
+        const desktopWarning = document.createElement('div');
+        desktopWarning.className = 'alert alert-warning mt-3';
+        desktopWarning.innerHTML = `
+            <strong>⚠️ Desktop Detected</strong><br>
+            For best results, open this on your mobile device.<br>
+            Desktop location is often inaccurate and won't change when walking.
+        `;
+        startInterface.appendChild(desktopWarning);
     }
     
-    startLocationTracking();
+    // Start tracking button event
+    startBtn.addEventListener('click', function() {
+        startInterface.style.display = 'none';
+        trackingInterface.style.display = 'block';
+        startLocationTracking();
+    });
+    
+    // Stop tracking button event
+    stopBtn.addEventListener('click', function() {
+        stopLocationTracking();
+        trackingInterface.style.display = 'none';
+        startInterface.style.display = 'block';
+        
+        // Reset the start button text
+        startBtn.innerHTML = '📍 Start Tracking';
+        startBtn.disabled = false;
+    });
 });
 
 // Optional: Add visibility change listener to optimize battery usage
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
         console.log('Page hidden');
-        // Page is hidden, you might want to reduce update frequency
-        // For now, we'll keep it running
+        // Page is hidden, keep tracking if active
     } else {
         console.log('Page visible');
-        // Page is visible, ensure tracking is active
-        if (watchId === null) {
-            startLocationTracking();
-        }
+        // Page is visible, no automatic restart - user controls tracking
     }
 });
-
-// Add manual refresh button for testing
-window.refreshLocation = function() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(onLocationSuccess, onLocationError, geoOptions);
-    }
-};
