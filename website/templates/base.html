@@ -9,6 +9,24 @@
       integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7"
       crossorigin="anonymous"
     />
+    <style>
+      #location-info {
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        white-space: pre-line;
+        min-height: 120px;
+      }
+      .location-controls {
+        margin-top: 10px;
+      }
+      .location-controls button {
+        margin-right: 10px;
+      }
+    </style>
 
     <title>{% block title %}Home{% endblock %}</title>
   </head>
@@ -29,11 +47,23 @@
         </div>
       </div>
     </nav>    <div class="container-fluid mt-3 text-start">
-      <!-- Added container-fluid for full-width and text-start for left alignment -->
       {% block content %}
-      <h2>!!!!!!!!!!!!! Current Location:</h2>
+      <h2>Current Location:</h2>
       <p id="location-info">Fetching location...</p>
-      <!-- This is the element your JS targets -->
+      <div class="location-controls">
+        <button class="btn btn-primary btn-sm" onclick="refreshLocation()">Refresh Location</button>
+        <button class="btn btn-secondary btn-sm" onclick="stopLocationTracking()">Stop Tracking</button>
+        <button class="btn btn-success btn-sm" onclick="startLocationTracking()">Start Tracking</button>
+      </div>
+      <div class="mt-3">
+        <small class="text-muted">
+          <strong>Troubleshooting:</strong><br>
+          • Make sure location services are enabled<br>
+          • Allow location access when prompted<br>
+          • Try walking at least 1-2 meters to see changes<br>
+          • Check browser console (F12) for debug info
+        </small>
+      </div>
       <h1>{% block h1 %}test{% endblock %}</h1>
       {% endblock %}
     </div>
