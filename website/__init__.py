@@ -1,8 +1,9 @@
 from flask import Flask
+import os
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'asdcxz'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdcxz')
     
     from .views import views
     from .login import login
