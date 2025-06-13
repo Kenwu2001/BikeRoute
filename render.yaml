@@ -9,3 +9,7 @@ services:
         value: 3.10.12
       - key: GOOGLE_API_KEY
         sync: false  # You'll need to set this manually in Render dashboard
+      - key: TDX_CLIENT_ID
+        sync: false  # You'll need to set this manually in Render dashboard
+      - key: TDX_CLIENT_SECRET
+        sync: false  # You'll need to set this manually in Render dashboard

@@ -6,7 +6,7 @@ Google Maps API 相關功能
 
 import requests
 import polyline
-from config import GOOGLE_API_KEY
+from env.config import GOOGLE_API_KEY
 
 
 class GoogleMapsAPI:

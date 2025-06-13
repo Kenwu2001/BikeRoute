@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-from config import GOOGLE_API_KEY
+from env.config import GOOGLE_API_KEY
 from services.routing import RoutingService
 
 app = Flask(__name__)
