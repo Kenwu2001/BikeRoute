@@ -6,11 +6,13 @@ Google Maps API 相關功能
 
 import requests
 import polyline
-from env.config import GOOGLE_API_KEY
+import os
+# from env.config import GOOGLE_API_KEY   # for local development
 
 
 class GoogleMapsAPI:
     def __init__(self):
+        GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
         self.api_key = GOOGLE_API_KEY
     
     def get_directions(self, origin, destination, mode='driving'):

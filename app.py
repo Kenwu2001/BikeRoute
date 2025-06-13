@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-from env.config import GOOGLE_API_KEY
+import os # for deployment environment
+# from env.config import GOOGLE_API_KEY  # for local development
 from services.routing import RoutingService
 
 app = Flask(__name__)
@@ -40,6 +41,7 @@ def get_route():
 
 @app.route('/api/geocode')
 def geocode_address():
+    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     address = request.args.get('address')
     if not address:
         return jsonify({'status': 'fail', 'message': '地址為必填欄位'}), 400
