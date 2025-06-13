@@ -23,52 +23,12 @@
 
     <title>{% block title %}Home{% endblock %}</title>
   </head>
-
   <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbarNav"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <div class="navbar-nav">
-          <a class="nav-item nav-link" id="login" href="/login">Login</a>
-        </div>
-      </div>    </nav>    <div class="container-fluid mt-3 text-start">
-      {% block content %}
-      <!-- Start Tracking Interface -->
-      <div id="start-interface" class="text-center">
-        <h1 class="mb-4">🚴‍♂️ BikeRoute+ Location Tracker</h1>
-        <div class="card mx-auto" style="max-width: 500px;">
-          <div class="card-body">
-            <h3 class="card-title">Ready to Start Tracking?</h3>
-            <p class="card-text">
-              Track your bike route in real-time with precise GPS location updates.
-            </p>
-            <button id="start-tracking-btn" class="btn btn-success btn-lg">
-              📍 Start Tracking
-            </button>
-            <div class="mt-3">
-              <small class="text-muted">
-                <strong>Before starting:</strong><br>
-                • Make sure location services are enabled<br>
-                • Allow location access when prompted<br>
-                • For best results, use on mobile device
-              </small>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Location Tracking Interface (hidden initially) -->
-      <div id="tracking-interface" style="display: none;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h2>🔴 Live Tracking Active</h2>
-          <button id="stop-tracking-btn" class="btn btn-danger">Stop Tracking</button>
+    <div class="container-fluid mt-3 text-start">      {% block content %}
+      <!-- Auto-starting Location Tracking Interface -->
+      <div id="tracking-interface">
+        <div class="text-center mb-3">
+          <h2>🔴 BikeRoute+ Live Tracking</h2>
         </div>
         <div class="card">
           <div class="card-body">
@@ -76,16 +36,7 @@
             <p id="location-info">Starting location tracking...</p>
           </div>
         </div>
-        <div class="mt-3">
-          <small class="text-muted">
-            <strong>Tracking Tips:</strong><br>
-            • Walk/bike at least 1-2 meters to see location updates<br>
-            • Green text = high accuracy, Orange = medium, Red = low accuracy<br>
-            • Check browser console (F12) for detailed debug info
-          </small>
-        </div>
       </div>
-      <h1>{% block h1 %}test{% endblock %}</h1>
       {% endblock %}
     </div>
 

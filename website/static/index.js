@@ -4,17 +4,11 @@ let lastPosition = null;
 let watchId = null;
 let updateCount = 0;
 
-// Detect if user is on mobile device
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-// Check if we're on HTTPS (required for geolocation on most browsers)
-const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-
-// Geolocation options optimized for mobile
+// Simple geolocation options
 const geoOptions = {
     enableHighAccuracy: true,
-    timeout: isMobile ? 15000 : 20000,
-    maximumAge: 1000  // Allow 1 second old positions
+    timeout: 10000,
+    maximumAge: 1000
 };
 
 // Function to calculate distance between two positions (in meters)
@@ -50,17 +44,14 @@ function onLocationSuccess(position) {
         shouldUpdate = true;
     } else {
         distance = calculateDistance(lastPosition, currentPosition);
-        // Use different thresholds for mobile vs desktop
-        const threshold = isMobile ? 0.3 : 2.0; // 0.3m for mobile, 2m for desktop
-        shouldUpdate = distance > threshold;
+        shouldUpdate = distance > 1.0; // Simple 1 meter threshold
     }
 
     if (shouldUpdate) {
         lastPosition = currentPosition;
         
         const timeStr = new Date(currentPosition.timestamp).toLocaleTimeString();
-        let infoText = `Device: ${isMobile ? 'Mobile' : 'Desktop'}\n`;
-        infoText += `Lat: ${currentPosition.latitude.toFixed(6)}, Lng: ${currentPosition.longitude.toFixed(6)}\n`;
+        let infoText = `Lat: ${currentPosition.latitude.toFixed(6)}, Lng: ${currentPosition.longitude.toFixed(6)}\n`;
         infoText += `Accuracy: ±${Math.round(currentPosition.accuracy)}m\n`;
         infoText += `Time: ${timeStr}\n`;
         infoText += `Updates: ${updateCount}`;
@@ -69,117 +60,33 @@ function onLocationSuccess(position) {
         }
         
         locationInfo.textContent = infoText;
+        locationInfo.style.color = 'black';
         
-        // Visual feedback for accuracy
-        if (currentPosition.accuracy <= 10) {
-            locationInfo.style.color = 'green';
-        } else if (currentPosition.accuracy <= 50) {
-            locationInfo.style.color = 'orange';
-        } else {
-            locationInfo.style.color = 'red';
-        }
-        
-        console.log(`Location updated: ${currentPosition.latitude}, ${currentPosition.longitude}, accuracy: ${currentPosition.accuracy}m, device: ${isMobile ? 'mobile' : 'desktop'}`);
-    } else {
-        const threshold = isMobile ? 0.3 : 2.0;
-        console.log(`Location change too small: ${distance.toFixed(2)}m (threshold: ${threshold}m)`);
-        // Still update the counter and time to show activity
-        const timeStr = new Date(currentPosition.timestamp).toLocaleTimeString();
-        const lines = locationInfo.textContent.split('\n');
-        lines[2] = `Time: ${timeStr}`;
-        lines[3] = `Updates: ${updateCount}`;
-        locationInfo.textContent = lines.join('\n');
+        console.log(`Location updated: ${currentPosition.latitude}, ${currentPosition.longitude}`);
     }
 }
 
-// Error callback for geolocation
+// Simple error callback
 function onLocationError(error) {
-    let errorMessage = '';
-    let troubleshoot = '';
-    
-    switch(error.code) {
-        case error.PERMISSION_DENIED:
-            errorMessage = "Location access denied";
-            troubleshoot = "Click the location icon in your browser's address bar and allow location access";
-            break;
-        case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location unavailable";
-            troubleshoot = "Try refreshing the page or check if location services are enabled";
-            break;
-        case error.TIMEOUT:
-            errorMessage = "Location request timed out";
-            troubleshoot = "Make sure you're near a window or outside for better GPS signal";
-            break;
-        default:
-            errorMessage = "Unknown location error";
-            troubleshoot = "Try refreshing the page";
-            break;
-    }
-    
-    locationInfo.innerHTML = `<strong>Error:</strong> ${errorMessage}<br><small>${troubleshoot}</small>`;
+    locationInfo.textContent = "Location error: " + error.message;
     locationInfo.style.color = 'red';
-    console.error('Geolocation error:', error);
-}
-
-// Check if geolocation is supported and get permission status
-async function checkLocationPermission() {
-    if (!navigator.geolocation) {
-        locationInfo.textContent = "Geolocation not supported by this browser";
-        locationInfo.style.color = 'red';
-        return false;
-    }
-
-    // Check if we're on HTTPS (required for geolocation)
-    if (!isSecure) {
-        locationInfo.innerHTML = `<strong>HTTPS Required</strong><br><small>Geolocation requires HTTPS. Deploy to Render or use localhost.</small>`;
-        locationInfo.style.color = 'red';
-        return false;
-    }
-
-    // Check permission status if available
-    if (navigator.permissions) {
-        try {
-            const permission = await navigator.permissions.query({name: 'geolocation'});
-            console.log('Geolocation permission status:', permission.state);
-            
-            if (permission.state === 'denied') {
-                locationInfo.innerHTML = `<strong>Location access denied</strong><br><small>Enable location permissions in your browser settings</small>`;
-                locationInfo.style.color = 'red';
-                return false;
-            }
-        } catch (e) {
-            console.log('Permission API not available');
-        }
-    }
-    
-    return true;
+    console.error('Location error:', error);
 }
 
 // Start location tracking
-async function startLocationTracking() {
-    const canUseLocation = await checkLocationPermission();
-    if (!canUseLocation) return;
-    
-    const locationInfo = document.getElementById("location-info");
-    const startBtn = document.getElementById('start-tracking-btn');
-    
-    locationInfo.textContent = "Requesting location permission...";
-    locationInfo.style.color = 'blue';
-    
-    // Update button state
-    if (startBtn) {
-        startBtn.innerHTML = '🔄 Starting...';
-        startBtn.disabled = true;
+function startLocationTracking() {
+    if (!navigator.geolocation) {
+        locationInfo.textContent = "Geolocation not supported";
+        return;
     }
     
-    // Start watching position with optimized options
+    locationInfo.textContent = "Getting location...";
+    
     watchId = navigator.geolocation.watchPosition(
         onLocationSuccess,
         onLocationError,
         geoOptions
     );
-    
-    console.log('Started location tracking with watchId:', watchId);
 }
 
 // Stop location tracking
@@ -187,77 +94,15 @@ function stopLocationTracking() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
-        
-        const locationInfo = document.getElementById("location-info");
         locationInfo.textContent = "Location tracking stopped";
         locationInfo.style.color = 'gray';
-        console.log('Stopped location tracking');
     }
 }
 
 // Start tracking when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page loaded, initializing tracking interface');
-    console.log('Device type:', isMobile ? 'Mobile' : 'Desktop');
-    console.log('Protocol:', location.protocol);
-    console.log('Is secure:', isSecure);
+    console.log('Page loaded, auto-starting location tracking');
     
-    const startInterface = document.getElementById('start-interface');
-    const trackingInterface = document.getElementById('tracking-interface');
-    const startBtn = document.getElementById('start-tracking-btn');
-    const stopBtn = document.getElementById('stop-tracking-btn');
-    
-    // Check if HTTPS is available
-    if (!isSecure) {
-        startInterface.innerHTML = `
-            <div class="alert alert-danger text-center">
-                <h4>⚠️ HTTPS Required</h4>
-                <p>Geolocation requires HTTPS for security.</p>
-                <p>Deploy to Render or use localhost to test location tracking.</p>
-                <small>Current URL: ${location.href}</small>
-            </div>
-        `;
-        return;
-    }
-    
-    // Show warning for desktop users
-    if (!isMobile) {
-        const desktopWarning = document.createElement('div');
-        desktopWarning.className = 'alert alert-warning mt-3';
-        desktopWarning.innerHTML = `
-            <strong>⚠️ Desktop Detected</strong><br>
-            For best results, open this on your mobile device.<br>
-            Desktop location is often inaccurate and won't change when walking.
-        `;
-        startInterface.appendChild(desktopWarning);
-    }
-    
-    // Start tracking button event
-    startBtn.addEventListener('click', function() {
-        startInterface.style.display = 'none';
-        trackingInterface.style.display = 'block';
-        startLocationTracking();
-    });
-    
-    // Stop tracking button event
-    stopBtn.addEventListener('click', function() {
-        stopLocationTracking();
-        trackingInterface.style.display = 'none';
-        startInterface.style.display = 'block';
-        
-        // Reset the start button text
-        startBtn.innerHTML = '📍 Start Tracking';
-        startBtn.disabled = false;
-    });
-});
-
-// Optional: Add visibility change listener to optimize battery usage
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden) {
-        console.log('Page hidden');
-        // Page is hidden, keep tracking if active
-    } else {
-        console.log('Page visible');
-        // Page is visible, no automatic restart - user controls tracking
-    }
+    // Start location tracking
+    startLocationTracking();
 });
