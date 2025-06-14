@@ -7,7 +7,7 @@ class RoutingService:
         self.bike_api = TDXBikeAPI()
         self.gmap_api = GoogleMapsAPI()
 
-    def find_best_return_station(self, user_coord, destination_coord, top_k=5):
+    def find_best_return_station(self, user_coord, destination_coord, group_size=1, top_k=5):
         """
         找出距離目的地最近的可還車站點，並規劃路線
         :param user_coord: tuple(float, float), 使用者目前位置
@@ -16,14 +16,17 @@ class RoutingService:
         :return: dict, 包含推薦站點資訊與路線資訊
         """
         # Step 1: 抓取所有可還車站點
-        available_stations = self.bike_api.get_available_return_stations()
+        all_stations = self.bike_api.get_available_return_stations()
+    
+        # 🔍 先篩選掉空位不足的站點
+        valid_stations = all_stations[all_stations['AvailableReturnBikes'] >= group_size].copy()
 
         # Step 2: 計算每個站點到目的地的直線距離（先快速過濾最近幾個）
-        available_stations['dest_dist'] = available_stations.apply(
+        valid_stations['dest_dist'] = valid_stations.apply(
             lambda row: ((row['lat'] - destination_coord[0])**2 + (row['lng'] - destination_coord[1])**2)**0.5,
             axis=1
         )
-        nearby_stations = available_stations.nsmallest(top_k, 'dest_dist')
+        nearby_stations = valid_stations.nsmallest(top_k, 'dest_dist')
 
         # Step 3: 使用 Google Maps 分別計算：user → station（騎車） + station → destination（步行）
         candidates = []
@@ -33,10 +36,15 @@ class RoutingService:
             destination_coord_str = f"{destination_coord[0]},{destination_coord[1]}"
             
             try:
-                route_points, total_text, total_sec = self.gmap_api.get_multiple_routes(
+                route_points, total_text, total_sec, segment_lengths = self.gmap_api.get_multiple_routes(
                     [(user_coord_str, station_coord), (station_coord, destination_coord_str)],
                     ['bicycling', 'walking']
                 )
+
+                bike_len = segment_lengths[0]
+                bike_route = route_points[:bike_len]
+                walk_route = route_points[bike_len:]
+
 
                 candidates.append({
                     'station_uid': row['StationUID'],
@@ -45,8 +53,10 @@ class RoutingService:
                     'lng': row['lng'],
                     'total_time_text': total_text,
                     'total_time_sec': total_sec,
-                    'route': route_points
+                    'bike_route': bike_route,
+                    'walk_route': walk_route
                 })
+
             except Exception as e:
                 print(f"規劃路線失敗：{e}")
                 continue

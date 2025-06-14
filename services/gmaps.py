@@ -47,18 +47,20 @@ class GoogleMapsAPI:
         
         :param waypoints: list, 路徑點列表 [(起點, 終點1), (終點1, 終點2), ...]
         :param modes: list, 對應的交通方式列表
-        :return: tuple, (合併的路線點, 合併的時間文字, 總時間秒數)
+        回傳兩段點串與時間資訊（含騎乘與步行點分離）
+        :return: (route_points, time_text, time_sec, [每段長度])
         """
         all_points = []
         duration_texts = []
         total_duration = 0
-        
+        segment_lengths = []
+
         for (origin, destination), mode in zip(waypoints, modes):
             points, duration_text, duration_value = self.get_directions(origin, destination, mode)
             all_points.extend(points)
+            segment_lengths.append(len(points))
             duration_texts.append(duration_text)
             total_duration += duration_value
-        
+
         combined_duration_text = ' + '.join(duration_texts)
-        
-        return all_points, combined_duration_text, total_duration
+        return all_points, combined_duration_text, total_duration, segment_lengths

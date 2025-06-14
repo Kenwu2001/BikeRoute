@@ -15,11 +15,13 @@ def get_route():
     user_lng = request.args.get('user_lng', type=float)
     dest_lat = request.args.get('dest_lat', type=float)
     dest_lng = request.args.get('dest_lng', type=float)
+    group_size = request.args.get('group_size', default=1, type=int)
 
     routing_service = RoutingService()
     result = routing_service.find_best_return_station(
         user_coord=(user_lat, user_lng),
-        destination_coord=(dest_lat, dest_lng)
+        destination_coord=(dest_lat, dest_lng),
+        group_size=group_size
     )
 
     if result is None:
@@ -33,7 +35,8 @@ def get_route():
             'lat': result['lat'],
             'lng': result['lng']
         },
-        'route': result['route'],
+        'bike_route': result['bike_route'],
+        'walk_route': result['walk_route'],
         'total_time_text': result['total_time_text'],
         'total_time_sec': result['total_time_sec']
     })
@@ -71,7 +74,7 @@ def available_stations():
             'lat': row['lat'],
             'lng': row['lng'],
             'address': row['address'],
-            'available': int(row['AvailableReturnBikes'])
+            'available': row['AvailableReturnBikes']
         })
 
     return jsonify(stations)

@@ -1,4 +1,12 @@
-const map = L.map('map').setView([24.9913, 121.5645], 15);
+// 轉乘點 icon
+const transferIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+  iconSize: [30, 30],
+  iconAnchor: [15, 30],
+  popupAnchor: [0, -30]
+});
+
+const map = L.map('map').setView([24.995430, 121.569280], 15);
 //const map = L.map('map').setView([25.0335, 121.5645], 15);
 
 let bikeLine, walkLine;
@@ -6,6 +14,7 @@ let userMarker, stationMarker, destMarker;
 let infoBox;
 let currentDestination = null;
 let stationMarkers = [];  // 所有可還站的 marker
+let isLocked = false;
 
 // 建立底圖
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -44,8 +53,9 @@ function reroute() {
     const userLat = position.coords.latitude;
     const userLng = position.coords.longitude;
     const [destLat, destLng] = currentDestination;
+    const groupSize = document.getElementById('group').value;
 
-    fetch(`/api/route?user_lat=${userLat}&user_lng=${userLng}&dest_lat=${destLat}&dest_lng=${destLng}`)
+    fetch(`/api/route?user_lat=${userLat}&user_lng=${userLng}&dest_lat=${destLat}&dest_lng=${destLng}&group_size=${groupSize}`)
       .then(res => res.json())
       .then(data => {
         if (data.status === 'fail') {
@@ -53,25 +63,27 @@ function reroute() {
           return;
         }
 
-        const route = data.route;
+        const bikeRoute = data.bike_route;
+        const walkRoute = data.walk_route;
         const station = data.station;
-        const halfway = Math.floor(route.length / 2);
 
         // 移除舊圖層
         [bikeLine, walkLine, userMarker, stationMarker, infoBox].forEach(layer => {
           if (layer) map.removeLayer(layer);
         });
 
-        bikeLine = L.polyline(route.slice(0, halfway), {
+        bikeLine = L.polyline(bikeRoute, {
           color: 'blue', weight: 5
         }).addTo(map).bindPopup("🚴 騎乘路段");
 
-        walkLine = L.polyline(route.slice(halfway), {
+        walkLine = L.polyline(walkRoute, {
           color: 'green', weight: 4, dashArray: '5, 10'
         }).addTo(map).bindPopup("🚶 步行路段");
 
         userMarker = L.marker([userLat, userLng]).addTo(map).bindPopup("📍 你的位置");
-        stationMarker = L.marker([station.lat, station.lng]).addTo(map).bindPopup("🚲 推薦還車站：" + station.address);
+        stationMarker = L.marker([station.lat, station.lng], { icon: transferIcon })
+          .addTo(map)
+          .bindPopup("🔁 轉乘點：還車後開始步行<br><b>站名：</b>" + station.address);
 
         infoBox = L.control();
         infoBox.onAdd = function () {
@@ -87,6 +99,13 @@ function reroute() {
   }, error => {
     alert("⚠️ GPS 取得失敗：" + error.message);
   });
+}
+
+function clearStationMarkers() {
+  stationMarkers.forEach(marker => {
+    map.removeLayer(marker);
+  });
+  stationMarkers = [];
 }
 
 // 抓取並顯示所有可還車站
@@ -146,7 +165,64 @@ legend.onAdd = function () {
 
 legend.addTo(map);
 
-// 自動更新（每 60 秒 reroute）
+let userLocationControl = L.control({ position: 'bottomleft' });
+
+userLocationControl.onAdd = function () {
+  const div = L.DomUtil.create('div', 'info user-location');
+  div.innerHTML = "📍 等待定位中...";
+  div.style.backgroundColor = 'white';
+  div.style.padding = '6px';
+  div.style.border = '1px solid gray';
+  div.style.fontSize = '13px';
+  div.style.lineHeight = '1.2';
+  return div;
+};
+
+userLocationControl.addTo(map);
+
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 10000
+  });
+} else {
+  alert("⚠️ 無法取得裝置定位功能");
+}
+
+function onPositionUpdate(position) {
+  const userLat = position.coords.latitude.toFixed(6);
+  const userLng = position.coords.longitude.toFixed(6);
+
+  // 顯示在右下角座標欄位
+  const div = document.querySelector('.user-location');
+  div.innerHTML = `📍 目前位置：<br>Lat: ${userLat}<br>Lng: ${userLng}`;
+
+  // 如果有 marker，就更新其位置；沒有就新建
+  if (userMarker) {
+    userMarker.setLatLng([userLat, userLng]);
+  } else {
+    userMarker = L.marker([userLat, userLng]).addTo(map).bindPopup("📍 你的位置");
+  }
+
+  if (isLocked) {
+    map.setView([userLat, userLng]);
+  }
+
+}
+
+function onPositionError(error) {
+  const div = document.querySelector('.user-location');
+  div.innerHTML = `⚠️ 定位失敗：${error.message}`;
+}
+
+function toggleLock() {
+  isLocked = !isLocked;
+  const btn = document.getElementById('lock-btn');
+  btn.textContent = isLocked ? '🔒 鎖定中' : '🔓 鎖定我';
+}
+
+// 自動更新（每 59 秒 reroute）
 setInterval(() => {
   if (currentDestination) reroute();
 }, 59000);

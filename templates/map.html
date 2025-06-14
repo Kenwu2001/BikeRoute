@@ -15,14 +15,19 @@
     }
     .info.legend {
       font-family: Arial, sans-serif;
+      z-index: 1000;
+      position: relative;
     }
   </style>
 </head>
 <body>
   <div id="controls">
     <label for="address">輸入目的地地址：</label>
-    <input type="text" id="address" placeholder="例如：台北車站、信義威秀、政大圖書館">
+    <input type="text" id="address" placeholder="例如：台北車站">
+    <label for="group">同行人數：</label>
+    <input type="number" id="group" value="1" min="1" max="30" style="width: 60px; margin-right: 10px;">
     <button onclick="geocodeAndRoute()">規劃路線</button>
+    <button id="lock-btn" onclick="toggleLock()">🔓 鎖定我</button>
   </div>
   <div id="map"></div>
 
