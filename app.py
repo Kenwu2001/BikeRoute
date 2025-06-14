@@ -39,7 +39,7 @@ def get_route():
             'address': result['address'],
             'lat': result['lat'],
             'lng': result['lng'],
-            'available': result.get('available_return_bikes', 0)
+            'available': result.get('available_return_bikes', 0)  # This handles if the key doesn't exist
         },
         'bike_route': result['bike_route'],
         'walk_route': result['walk_route'],

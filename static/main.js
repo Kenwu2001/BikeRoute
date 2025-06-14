@@ -15,7 +15,6 @@ let infoBox;
 let currentDestination = null;
 let stationMarkers = [];  // 所有可還站的 marker
 let isLocked = false;
-let stationUpdateInterval;
 
 // 建立底圖
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -67,16 +66,14 @@ function reroute() {
         const bikeRoute = data.bike_route;
         const walkRoute = data.walk_route;
         const station = data.station;
-
-        // 移除舊圖層
+        
+        // 當重新規劃路線時，會同時獲得最新的可還車位數// 移除舊圖層
         [bikeLine, walkLine, userMarker, stationMarker, infoBox].forEach(layer => {
           if (layer) map.removeLayer(layer);
         });
 
-        // 清除舊的更新定時器
-        if (stationUpdateInterval) {
-          clearInterval(stationUpdateInterval);
-        }
+        // 清除舊的更新定時器 - 不再需要，因為我們已移除 30 秒更新間隔
+        // 車位資訊會在每次 reroute 時自動更新
 
         bikeLine = L.polyline(bikeRoute, {
           color: 'blue', weight: 5
@@ -89,13 +86,8 @@ function reroute() {
         userMarker = L.marker([userLat, userLng]).addTo(map).bindPopup("📍 你的位置");
         stationMarker = L.marker([station.lat, station.lng], { icon: transferIcon })
           .addTo(map)
-          .bindPopup("🔁 轉乘點：還車後開始步行<br><b>站名：</b>" + station.address + "<br><b>剩餘車位：</b>" + station.available + " 個");
-
-        // 設定即時更新轉乘站剩餘車位
-        updateStationAvailability(station.uid);
-        stationUpdateInterval = setInterval(() => {
-          updateStationAvailability(station.uid);
-        }, 30000); // 每30秒更新一次
+          .bindPopup("🔁 轉乘點：還車後開始步行<br><b>站名：</b>" + station.address + "<br><b>剩餘車位：</b>" + station.available + " 個");        // 車位資訊已經在路線規劃時更新，不需要額外設定更新間隔
+        // 注意: 我們刪除了30秒的更新間隔，只有在reroute時才會更新車位狀態
 
         infoBox = L.control();
         infoBox.onAdd = function () {
@@ -105,8 +97,10 @@ function reroute() {
           div.style.padding = '6px';
           div.style.border = '1px solid gray';
           return div;
-        };
-        infoBox.addTo(map);
+        };        infoBox.addTo(map);
+        
+        // 在重新規劃路線時同時刷新所有可還車站顯示
+        showAllReturnStations();
       });
   }, error => {
     alert("⚠️ GPS 取得失敗：" + error.message);
@@ -258,6 +252,7 @@ function toggleLock() {
 }
 
 // 自動更新（每 59 秒 reroute）
+// reroute() 函數會同時更新路線和站點可用車位
 setInterval(() => {
   if (currentDestination) reroute();
 }, 59000);
