@@ -8,26 +8,26 @@ import requests
 import pandas as pd
 import json
 import time
-
 import os
 
-#  for local development
-# from env.config import (
-#     TDX_CLIENT_ID, 
-#     TDX_CLIENT_SECRET, 
-#     TDX_AUTH_URL, 
-#     TDX_AVAILABILITY_URL, 
-#     TDX_STATION_URL
-# )
+if os.getenv('ENV') == 'PROD':
+    TDX_CLIENT_ID = os.getenv('TDX_CLIENT_ID')
+    TDX_CLIENT_SECRET = os.getenv('TDX_CLIENT_SECRET')
+    TDX_AUTH_URL = os.getenv('TDX_AUTH_URL')
+    TDX_AVAILABILITY_URL = os.getenv('TDX_AVAILABILITY_URL')
+    TDX_STATION_URL = os.getenv('TDX_STATION_URL')
+else:
+    from env.config import (
+        TDX_CLIENT_ID, 
+        TDX_CLIENT_SECRET, 
+        TDX_AUTH_URL, 
+        TDX_AVAILABILITY_URL, 
+        TDX_STATION_URL
+    )
 
 
 class TDXBikeAPI:
     def __init__(self):
-        TDX_CLIENT_ID = os.getenv("TDX_CLIENT_ID")
-        TDX_CLIENT_SECRET = os.getenv("TDX_CLIENT_SECRET")
-        TDX_AUTH_URL = os.getenv("TDX_AUTH_URL")
-        TDX_AVAILABILITY_URL = os.getenv("TDX_AVAILABILITY_URL")
-        TDX_STATION_URL = os.getenv("TDX_STATION_URL")
         self.access_token = None
         self.token_expire_time = 0
         self.headers = None

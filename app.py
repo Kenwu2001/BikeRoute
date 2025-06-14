@@ -1,8 +1,12 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-import os # for deployment environment
-# from env.config import GOOGLE_API_KEY  # for local development
+import os
 from services.routing import RoutingService
+
+if os.getenv('ENV') == 'PROD':
+    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+else:
+    from env.config import GOOGLE_API_KEY
 
 app = Flask(__name__)
 
@@ -16,11 +20,13 @@ def get_route():
     user_lng = request.args.get('user_lng', type=float)
     dest_lat = request.args.get('dest_lat', type=float)
     dest_lng = request.args.get('dest_lng', type=float)
+    group_size = request.args.get('group_size', default=1, type=int)
 
     routing_service = RoutingService()
     result = routing_service.find_best_return_station(
         user_coord=(user_lat, user_lng),
-        destination_coord=(dest_lat, dest_lng)
+        destination_coord=(dest_lat, dest_lng),
+        group_size=group_size
     )
 
     if result is None:
@@ -34,14 +40,14 @@ def get_route():
             'lat': result['lat'],
             'lng': result['lng']
         },
-        'route': result['route'],
+        'bike_route': result['bike_route'],
+        'walk_route': result['walk_route'],
         'total_time_text': result['total_time_text'],
         'total_time_sec': result['total_time_sec']
     })
 
 @app.route('/api/geocode')
 def geocode_address():
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
     address = request.args.get('address')
     if not address:
         return jsonify({'status': 'fail', 'message': '地址為必填欄位'}), 400
@@ -73,13 +79,11 @@ def available_stations():
             'lat': row['lat'],
             'lng': row['lng'],
             'address': row['address'],
-            'available': int(row['AvailableReturnBikes'])
+            'available': row['AvailableReturnBikes']
         })
 
     return jsonify(stations)
 
 
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(debug=True)
