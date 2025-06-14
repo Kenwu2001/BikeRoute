@@ -32,11 +32,6 @@ def get_route():
     if result is None:
         return jsonify({'status': 'fail', 'message': '找不到可用路線'}), 400
 
-    # Debug logging to see what keys are available in result
-    print(f"Debug - result keys: {list(result.keys())}")
-    if 'available_return_bikes' not in result:
-        print(f"Warning - available_return_bikes not found in result: {result}")
-
     return jsonify({
         'status': 'ok',
         'station': {
