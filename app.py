@@ -84,6 +84,28 @@ def available_stations():
 
     return jsonify(stations)
 
+@app.route('/api/station_availability')
+def get_station_availability():
+    station_uid = request.args.get('uid')
+    if not station_uid:
+        return jsonify({'status': 'fail', 'message': '站點UID為必填欄位'}), 400
+
+    try:
+        from services.tdx import TDXBikeAPI
+        bike_api = TDXBikeAPI()
+        station_info = bike_api.get_station_info_by_uid(station_uid)
+        
+        if station_info is None:
+            return jsonify({'status': 'fail', 'message': '找不到指定站點'}), 404
+
+        return jsonify({
+            'status': 'ok',
+            'uid': station_uid,
+            'available': station_info['AvailableReturnBikes']
+        })
+    except Exception as e:
+        return jsonify({'status': 'fail', 'message': f'取得站點資訊失敗: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

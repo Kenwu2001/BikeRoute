@@ -15,6 +15,7 @@ let infoBox;
 let currentDestination = null;
 let stationMarkers = [];  // 所有可還站的 marker
 let isLocked = false;
+let stationUpdateInterval;
 
 // 建立底圖
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -72,6 +73,11 @@ function reroute() {
           if (layer) map.removeLayer(layer);
         });
 
+        // 清除舊的更新定時器
+        if (stationUpdateInterval) {
+          clearInterval(stationUpdateInterval);
+        }
+
         bikeLine = L.polyline(bikeRoute, {
           color: 'blue', weight: 5
         }).addTo(map).bindPopup("🚴 騎乘路段");
@@ -83,7 +89,13 @@ function reroute() {
         userMarker = L.marker([userLat, userLng]).addTo(map).bindPopup("📍 你的位置");
         stationMarker = L.marker([station.lat, station.lng], { icon: transferIcon })
           .addTo(map)
-          .bindPopup("🔁 轉乘點：還車後開始步行<br><b>站名：</b>" + station.address);
+          .bindPopup("🔁 轉乘點：還車後開始步行<br><b>站名：</b>" + station.address + "<br><b>剩餘車位：</b>" + station.available + " 個");
+
+        // 設定即時更新轉乘站剩餘車位
+        updateStationAvailability(station.uid);
+        stationUpdateInterval = setInterval(() => {
+          updateStationAvailability(station.uid);
+        }, 30000); // 每30秒更新一次
 
         infoBox = L.control();
         infoBox.onAdd = function () {
@@ -99,6 +111,29 @@ function reroute() {
   }, error => {
     alert("⚠️ GPS 取得失敗：" + error.message);
   });
+}
+
+function updateStationAvailability(stationUid) {
+  if (!stationMarker || !stationUid) return;
+  
+  fetch(`/api/station_availability?uid=${stationUid}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        const currentPopup = stationMarker.getPopup();
+        if (currentPopup) {
+          const content = currentPopup.getContent();
+          const updatedContent = content.replace(
+            /<b>剩餘車位：<\/b>\d+ 個/,
+            `<b>剩餘車位：</b>${data.available} 個`
+          );
+          stationMarker.setPopupContent(updatedContent);
+        }
+      }
+    })
+    .catch(error => {
+      console.error('更新站點資訊失敗:', error);
+    });
 }
 
 function clearStationMarkers() {
