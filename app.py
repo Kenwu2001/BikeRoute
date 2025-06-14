@@ -38,7 +38,8 @@ def get_route():
             'uid': result['station_uid'],
             'address': result['address'],
             'lat': result['lat'],
-            'lng': result['lng']
+            'lng': result['lng'],
+            'available': result['available_return_bikes']
         },
         'bike_route': result['bike_route'],
         'walk_route': result['walk_route'],
