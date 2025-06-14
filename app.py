@@ -28,9 +28,14 @@ def get_route():
         destination_coord=(dest_lat, dest_lng),
         group_size=group_size
     )
-
+    
     if result is None:
         return jsonify({'status': 'fail', 'message': '找不到可用路線'}), 400
+
+    # Debug logging to see what keys are available in result
+    print(f"Debug - result keys: {list(result.keys())}")
+    if 'available_return_bikes' not in result:
+        print(f"Warning - available_return_bikes not found in result: {result}")
 
     return jsonify({
         'status': 'ok',
@@ -39,7 +44,7 @@ def get_route():
             'address': result['address'],
             'lat': result['lat'],
             'lng': result['lng'],
-            'available': result['available_return_bikes']
+            'available': result.get('available_return_bikes', 0)
         },
         'bike_route': result['bike_route'],
         'walk_route': result['walk_route'],
