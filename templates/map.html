@@ -28,13 +28,16 @@
     <input type="number" id="group" value="1" min="1" max="30" style="width: 60px; margin-right: 10px;">
     <button onclick="geocodeAndRoute()">規劃路線</button>
     <button id="toggleLock" class="no-reroute" onclick="toggleLock()">🔓 鎖定我</button>
+    <button id="toggleVoiceNavigation" class="no-reroute" onclick="toggleVoiceNavigation()">🎤 語音導航</button>
+    <button id="speakCurrentStatus" class="no-reroute" onclick="speakCurrentStatus()">📢 播報狀態</button>
   </div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="/static/routeHint.js"></script>
-  <script src="/static/position.js"></script>
   <script src="/static/stationInfo.js"></script>
+  <script src="/static/speak.js"></script>
+  <script src="/static/position.js"></script>
   <script src="/static/main.js"></script>
 </body>
 </html>

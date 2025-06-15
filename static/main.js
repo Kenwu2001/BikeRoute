@@ -5,6 +5,7 @@ const map = L.map('map').setView([24.995430, 121.569280], 15);
 let bikeLine, walkLine;
 let destMarker;
 let currentDestination = null;
+let previousDestination = null;  // 新增：記錄上一次的目的地
 let rerouteInterval;
 let currentRouteData = null;  // 保存当前路线数据
 
@@ -18,11 +19,23 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
+// 比較兩個座標是否相同（允許小數點誤差）
+function isSameDestination(dest1, dest2) {
+  if (!dest1 || !dest2) return false;
+  const tolerance = 0.0001; // 約10公尺的誤差範圍
+  return Math.abs(dest1[0] - dest2[0]) < tolerance && 
+         Math.abs(dest1[1] - dest2[1]) < tolerance;
+}
+
 // 使用者輸入地址 → 後端 geocode → reroute
 async function geocodeAndRoute() {
   const address = document.getElementById('address')?.value;
   if (!address) {
     alert("請輸入地址");
+    // === 新增：語音提示 ===
+    if (window.voiceNavigation && window.voiceNavigation.isEnabled) {
+      window.voiceNavigation.speak("請輸入地址");
+    }
     return;
   }
 
@@ -34,9 +47,15 @@ async function geocodeAndRoute() {
     
     if (data.status !== 'ok') {
       alert("❌ 地址轉換失敗：" + data.message);
+      // === 新增：語音播報錯誤 ===
+      if (window.voiceNavigation) {
+        window.voiceNavigation.announceEmergency("地址轉換失敗");
+      }
       return;
     }
 
+    // 記錄舊的目的地
+    previousDestination = currentDestination;
     currentDestination = [data.lat, data.lng];
     window.currentDestination = currentDestination;
     console.log('📍 目的地設定為:', currentDestination);
@@ -45,6 +64,13 @@ async function geocodeAndRoute() {
 
     if (destMarker) map.removeLayer(destMarker);
     destMarker = L.marker(currentDestination).addTo(map).bindPopup("🎯 目的地").openPopup();
+    
+    // === 修改：只有在目的地改變時才播報 ===
+    if (window.voiceNavigation && window.voiceNavigation.isEnabled) {
+      if (!isSameDestination(previousDestination, currentDestination)) {
+        window.voiceNavigation.speak("目的地設定完成，開始規劃路線");
+      }
+    }
     
     // 创建路线提示框
     createRouteHintBox();
@@ -58,6 +84,10 @@ async function geocodeAndRoute() {
   } catch (error) {
     console.error('地址解析失敗:', error);
     alert("❌ 地址解析失敗：" + error.message);
+    // === 新增：語音播報錯誤 ===
+    if (window.voiceNavigation) {
+      window.voiceNavigation.announceEmergency("地址解析失敗");
+    }
   }
 }
 
@@ -124,6 +154,11 @@ async function reroute() {
     if (data.status === 'fail') {
       console.error('❌ 路線規劃失敗:', data.message);
       alert(data.message);
+      
+      // 語音播報錯誤
+      if (window.voiceNavigation) {
+        window.voiceNavigation.announceEmergency('路線規劃失敗');
+      }
       return;
     }
 
@@ -172,6 +207,22 @@ async function reroute() {
     // 更新路线提示
     updateRouteHint(userLat, userLng);
 
+    // === 修改：只有在目的地改變時才播報路線概覽 ===
+    if (window.voiceNavigation && window.voiceNavigation.isEnabled) {
+      // 分析路線（這個總是要做，因為可能有路線變化）
+      window.voiceNavigation.analyzeRoute(data);
+      
+      // 只有在目的地改變時才播報路線概覽
+      if (!isSameDestination(previousDestination, currentDestination)) {
+        // 延遲一點播報，讓其他操作先完成
+        setTimeout(() => {
+          window.voiceNavigation.announceRouteOverview(data);
+        }, 1500);
+      } else {
+        console.log('🔇 目的地相同，跳過路線概覽播報');
+      }
+    }
+
     // 強制重繪地圖
     setTimeout(() => {
       map.invalidateSize();
@@ -195,6 +246,11 @@ async function reroute() {
     // 顯示錯誤在路線提示框中
     updateRouteHintWithError(errorMessage);
     
+    // === 新增：語音播報錯誤 ===
+    if (window.voiceNavigation) {
+      window.voiceNavigation.announceEmergency(errorMessage);
+    }
+    
   } finally {
     hideLoadingState();
   }
@@ -210,7 +266,7 @@ function setupButtonListeners() {
   // 監聽所有按鈕的點擊事件
   document.addEventListener('click', async function(event) {
     // 排除特定按鈕
-    const excludedButtons = ['toggleLock', 'lock-btn']; // 可以添加更多需要排除的按鈕ID
+    const excludedButtons = ['toggleLock', 'lock-toggleVoiceNavigation', 'speakCurrentStatus']; // 可以添加更多需要排除的按鈕ID
     const excludedClasses = ['no-reroute']; // 可以通過class排除
     
     // 檢查是否點擊的是按鈕
@@ -225,7 +281,7 @@ function setupButtonListeners() {
           // 首先嘗試獲取當前位置並更新位置資訊
           if (navigator.geolocation && window.positionModule) {
             try {
-              const position = await window.positionModule.getCurrentLocationWithRetry(2); // 使用較短的重試次數
+              const position = await window.positionModule.getCurrentLocationWithRetry(1); // 使用較短的重試次數
               console.log('🖱️ 按鈕觸發位置更新');
               window.positionModule.onPositionUpdate(position);
             } catch (error) {
@@ -274,6 +330,13 @@ function initializeApp() {
     window.stationInfo.initialize();
   }
   
+  // === 新增：初始化語音導航模組 ===
+  if (window.voiceNavigation) {
+    console.log('🎤 語音導航模組已就緒');
+  } else {
+    console.warn('⚠️ 語音導航模組未載入');
+  }
+  
   // 設置按鈕監聽器
   setupButtonListeners();
   
@@ -300,7 +363,26 @@ window.addEventListener('beforeunload', function() {
   clearAllIntervals();
 });
 
+// 切換語音導航
+function toggleVoiceNavigation() {
+  if (window.voiceNavigation) {
+    const isEnabled = window.voiceNavigation.toggleVoiceNavigation();
+    console.log('🎤 語音導航狀態:', isEnabled ? '啟用' : '停用');
+    return isEnabled;
+  }
+  return false;
+}
+
+// 播報當前狀態
+function speakCurrentStatus() {
+  if (window.voiceNavigation) {
+    window.voiceNavigation.announceCurrentStatus();
+  }
+}
+
 // 暴露全域函數供 HTML 使用
+window.toggleVoiceNavigation = toggleVoiceNavigation;
+window.speakCurrentStatus = speakCurrentStatus;
 window.geocodeAndRoute = geocodeAndRoute;
 window.reroute = reroute;
 
