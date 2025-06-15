@@ -34,8 +34,6 @@ def get_route():
 
     # Debug logging to see what keys are available in result
     print(f"Debug - result keys: {list(result.keys())}")
-    if 'available_return_bikes' not in result:
-        print(f"Warning - available_return_bikes not found in result: {result}")
 
     return jsonify({
         'status': 'ok',
@@ -44,7 +42,6 @@ def get_route():
             'address': result['address'],
             'lat': result['lat'],
             'lng': result['lng'],
-            'available': result.get('available_return_bikes', 0)
         },
         'bike_route': result['bike_route'],
         'walk_route': result['walk_route'],
