@@ -8,6 +8,7 @@ let currentDestination = null;
 let previousDestination = null;  // 新增：記錄上一次的目的地
 let rerouteInterval;
 let currentRouteData = null;  // 保存当前路线数据
+let currentStationUid = null;  // 記錄當前轉乘站 UID
 
 // 將 map 設為全域變數供其他模組使用
 window.map = map;
@@ -27,7 +28,12 @@ function isSameDestination(dest1, dest2) {
          Math.abs(dest1[1] - dest2[1]) < tolerance;
 }
 
-// 使用者輸入地址 → 後端 geocode → reroute
+// 比較兩個轉乘站是否相同
+function isSameStation(stationUid1, stationUid2) {
+  return stationUid1 === stationUid2;
+}
+
+// 使用者輸入地址 → 後端 geocode → routing
 async function geocodeAndRoute() {
   const address = document.getElementById('address')?.value;
   if (!address) {
@@ -75,8 +81,8 @@ async function geocodeAndRoute() {
     // 创建路线提示框
     createRouteHintBox();
     
-    // 立即執行路線規劃
-    await reroute();
+    // 使用 routing 進行完整路線規劃
+    await routing();
     
     // 啟動定時器
     startIntervals();
@@ -98,7 +104,7 @@ function startIntervals() {
   
   console.log('⏰ 啟動定時器');
   
-  // 每60秒重新規劃路線
+  // 每60秒重新規劃路線（使用 reroute）
   rerouteInterval = setInterval(async () => {
     if (currentDestination) {
       console.log('🔄 定時重新規劃路線');
@@ -125,13 +131,15 @@ function clearAllIntervals() {
   }
 }
 
-async function reroute() {
+// === 新增：完整路線規劃函數 ===
+// 用於第一次規劃、目的地更改、group_size 更改時
+async function routing() {
   if (!navigator.geolocation || !currentDestination) {
-    console.log('❌ reroute 條件不滿足: geolocation或currentDestination缺失');
+    console.log('❌ routing 條件不滿足: geolocation或currentDestination缺失');
     return;
   }
 
-  console.log('🔄 開始重新規劃路線...', new Date().toLocaleTimeString());
+  console.log('🛣️ 開始完整路線規劃...', new Date().toLocaleTimeString());
 
   try {
     // 使用 position 模組的定位函數
@@ -162,7 +170,7 @@ async function reroute() {
       return;
     }
 
-    console.log('✅ 路線規劃成功');
+    console.log('✅ 完整路線規劃成功');
 
     // 保存路线数据
     currentRouteData = data;
@@ -172,8 +180,10 @@ async function reroute() {
     const walkRoute = data.walk_route;
     const station = data.station;
     
-    // 保存當前轉乘站 UID
-    window.currentStationUid = station.uid;
+    // 記錄舊的轉乘站 UID
+    const previousStationUid = currentStationUid;
+    currentStationUid = station.uid;
+    window.currentStationUid = currentStationUid;
 
     // 移除舊路線圖層
     [bikeLine, walkLine].forEach(layer => {
@@ -207,19 +217,22 @@ async function reroute() {
     // 更新路线提示
     updateRouteHint(userLat, userLng);
 
-    // === 修改：只有在目的地改變時才播報路線概覽 ===
+    // === 語音導航處理 ===
     if (window.voiceNavigation && window.voiceNavigation.isEnabled) {
-      // 分析路線（這個總是要做，因為可能有路線變化）
+      // 分析路線（這個總是要做）
       window.voiceNavigation.analyzeRoute(data);
       
-      // 只有在目的地改變時才播報路線概覽
-      if (!isSameDestination(previousDestination, currentDestination)) {
+      // 判斷是否需要播報路線概覽
+      const shouldAnnounce = !isSameDestination(previousDestination, currentDestination) || 
+                            !isSameStation(previousStationUid, currentStationUid);
+      
+      if (shouldAnnounce) {
         // 延遲一點播報，讓其他操作先完成
         setTimeout(() => {
           window.voiceNavigation.announceRouteOverview(data);
         }, 1500);
       } else {
-        console.log('🔇 目的地相同，跳過路線概覽播報');
+        console.log('🔇 目的地和轉乘站均相同，跳過路線概覽播報');
       }
     }
 
@@ -228,10 +241,10 @@ async function reroute() {
       map.invalidateSize();
     }, 100);
     
-    console.log('🎉 路線更新完成:', new Date().toLocaleTimeString());
+    console.log('🎉 完整路線規劃完成:', new Date().toLocaleTimeString());
 
   } catch (error) {
-    console.error('❌ reroute 執行失敗:', error);
+    console.error('❌ routing 執行失敗:', error);
     
     // 根據錯誤類型給出不同的提示
     let errorMessage = "路線規劃失敗";
@@ -250,6 +263,124 @@ async function reroute() {
     if (window.voiceNavigation) {
       window.voiceNavigation.announceEmergency(errorMessage);
     }
+    
+  } finally {
+    hideLoadingState();
+  }
+}
+
+// === 修改：定時重新規劃路線函數 ===
+// 用於每分鐘的定時更新，只有轉乘站改變時才播報語音
+async function reroute() {
+  if (!navigator.geolocation || !currentDestination) {
+    console.log('❌ reroute 條件不滿足: geolocation或currentDestination缺失');
+    return;
+  }
+
+  console.log('🔄 開始定時重新規劃路線...', new Date().toLocaleTimeString());
+
+  try {
+    // 使用 position 模組的定位函數
+    const position = await window.positionModule.getCurrentLocationWithRetry(3);
+    
+    // 保存位置快取
+    window.lastKnownPosition = position;
+
+    const userLat = position.coords.latitude;
+    const userLng = position.coords.longitude;
+    const [destLat, destLng] = currentDestination;
+    const groupSize = document.getElementById('group')?.value || 1;
+
+    console.log(`📍 定時更新位置: ${userLat}, ${userLng}`);
+
+    const response = await fetch(`/api/route?user_lat=${userLat}&user_lng=${userLng}&dest_lat=${destLat}&dest_lng=${destLng}&group_size=${groupSize}`);
+    const data = await response.json();
+
+    if (data.status === 'fail') {
+      console.error('❌ 定時路線規劃失敗:', data.message);
+      
+      // 定時更新失敗時不顯示 alert，只記錄錯誤
+      console.warn('⚠️ 定時路線更新失敗，將在下次定時更新時重試');
+      return;
+    }
+
+    console.log('✅ 定時路線規劃成功');
+
+    // 記錄舊的轉乘站 UID
+    const previousStationUid = currentStationUid;
+    
+    // 保存路线数据
+    currentRouteData = data;
+    window.currentRouteData = data;
+    
+    const bikeRoute = data.bike_route;
+    const walkRoute = data.walk_route;
+    const station = data.station;
+    
+    // 更新轉乘站 UID
+    currentStationUid = station.uid;
+    window.currentStationUid = currentStationUid;
+
+    // 移除舊路線圖層
+    [bikeLine, walkLine].forEach(layer => {
+      if (layer) {
+        try {
+          map.removeLayer(layer);
+        } catch (e) {
+          console.warn('移除圖層時發生錯誤:', e);
+        }
+      }
+    });
+
+    // 立即更新地圖路線
+    bikeLine = L.polyline(bikeRoute, {
+      color: 'blue', weight: 5
+    }).addTo(map).bindPopup("🚴 騎乘路段");
+
+    walkLine = L.polyline(walkRoute, {
+      color: 'green', weight: 4, dashArray: '5, 10'
+    }).addTo(map).bindPopup("🚶 步行路段");
+
+    // 使用站點資訊模組創建轉乘站標記
+    if (window.stationInfo) {
+      window.stationInfo.createTransferStationMarker(station);
+      // 啟動轉乘站剩餘車位更新
+      window.stationInfo.startStationUpdate(station.uid);
+      // 立即更新轉乘站剩餘車位
+      window.stationInfo.updateStationAvailability(station.uid);
+    }
+
+    // 更新路线提示
+    updateRouteHint(userLat, userLng);
+
+    // === 修改：只有轉乘站改變時才播報語音 ===
+    if (window.voiceNavigation && window.voiceNavigation.isEnabled) {
+      // 分析路線（這個總是要做）
+      window.voiceNavigation.analyzeRoute(data);
+      
+      // 只有轉乘站改變時才播報
+      if (!isSameStation(previousStationUid, currentStationUid)) {
+        console.log('🔄 轉乘站已改變，播報路線更新');
+        setTimeout(() => {
+          window.voiceNavigation.announceRouteUpdate(data, previousStationUid);
+        }, 500);
+      } else {
+        console.log('🔇 轉乘站相同，跳過語音播報');
+      }
+    }
+
+    // 強制重繪地圖
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    
+    console.log('🎉 定時路線更新完成:', new Date().toLocaleTimeString());
+
+  } catch (error) {
+    console.error('❌ reroute 執行失敗:', error);
+    
+    // 定時更新失敗時不顯示錯誤，只記錄
+    console.warn('⚠️ 定時路線更新失敗，將在下次定時更新時重試:', error.message);
     
   } finally {
     hideLoadingState();
@@ -301,9 +432,20 @@ function setupButtonListeners() {
             if (excludedButtons.includes(event.target.id) || 
                 excludedClasses.some(cls => event.target.classList.contains(cls))) {
               console.log('🚫 跳過排除的按鈕:', event.target.id || event.target.textContent);
-            }
-            else{
-              await reroute();
+            } else {
+              // === 修改：檢查是否是會影響路線規劃的按鈕 ===
+              const routingTriggerButtons = ['group']; // group_size 更改按鈕
+              const isRoutingTrigger = routingTriggerButtons.some(id => 
+                event.target.id.includes(id) || event.target.name === id
+              );
+              
+              if (isRoutingTrigger) {
+                console.log('🛣️ 觸發完整路線規劃');
+                await routing();
+              } else {
+                console.log('🔄 觸發定時路線更新');
+                await reroute();
+              }
             }
           }
           
@@ -428,6 +570,7 @@ window.updateTrimmedRoutes = updateTrimmedRoutes;
 window.toggleVoiceNavigation = toggleVoiceNavigation;
 window.speakCurrentStatus = speakCurrentStatus;
 window.geocodeAndRoute = geocodeAndRoute;
+window.routing = routing;  // 新增：暴露 routing 函數
 window.reroute = reroute;
 
 console.log('📦 主模組載入完成');
