@@ -380,6 +380,50 @@ function speakCurrentStatus() {
   }
 }
 
+// === 新增：根據用戶位置裁剪路線 ===
+function getClosestIndexOnRoute(route, userLat, userLng) {
+  let minDist = Infinity;
+  let minIdx = 0;
+  for (let i = 0; i < route.length; i++) {
+    const [lat, lng] = route[i];
+    const dist = Math.pow(lat - userLat, 2) + Math.pow(lng - userLng, 2);
+    if (dist < minDist) {
+      minDist = dist;
+      minIdx = i;
+    }
+  }
+  return minIdx;
+}
+
+function updateTrimmedRoutes(userLat, userLng) {
+  if (!window.currentRouteData) return;
+  const bikeRoute = window.currentRouteData.bike_route;
+  const walkRoute = window.currentRouteData.walk_route;
+
+  // 裁剪路線：從距離最近的點開始到終點
+  let trimmedBike = bikeRoute;
+  let trimmedWalk = walkRoute;
+  if (bikeRoute && bikeRoute.length > 0) {
+    const idx = getClosestIndexOnRoute(bikeRoute, userLat, userLng);
+    trimmedBike = bikeRoute.slice(idx);
+  }
+  if (walkRoute && walkRoute.length > 0) {
+    const idx = getClosestIndexOnRoute(walkRoute, userLat, userLng);
+    trimmedWalk = walkRoute.slice(idx);
+  }
+
+  // 移除舊路線
+  if (bikeLine) { map.removeLayer(bikeLine); }
+  if (walkLine) { map.removeLayer(walkLine); }
+
+  // 畫出新路線
+  bikeLine = L.polyline(trimmedBike, { color: 'blue', weight: 5 }).addTo(map).bindPopup('🚴 剩餘騎乘路段');
+  walkLine = L.polyline(trimmedWalk, { color: 'green', weight: 4, dashArray: '5, 10' }).addTo(map).bindPopup('🚶 剩餘步行路段');
+}
+
+// 供 position.js 調用
+window.updateTrimmedRoutes = updateTrimmedRoutes;
+
 // 暴露全域函數供 HTML 使用
 window.toggleVoiceNavigation = toggleVoiceNavigation;
 window.speakCurrentStatus = speakCurrentStatus;

@@ -95,6 +95,11 @@ function onPositionUpdate(position) {
   if (isLocked) {
     window.map.setView([userLat, userLng]);
   }
+
+  // === 新增：根據用戶位置裁剪路線 ===
+  if (window.updateTrimmedRoutes) {
+    window.updateTrimmedRoutes(parseFloat(userLat), parseFloat(userLng));
+  }
 }
 
 // 位置錯誤回調函數
