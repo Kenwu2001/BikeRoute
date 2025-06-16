@@ -266,7 +266,7 @@ function setupButtonListeners() {
   // 監聽所有按鈕的點擊事件
   document.addEventListener('click', async function(event) {
     // 排除特定按鈕
-    const excludedButtons = ['toggleLock', 'lock-toggleVoiceNavigation', 'speakCurrentStatus']; // 可以添加更多需要排除的按鈕ID
+    const excludedButtons = ['toggleLock', 'lock-toggleVoiceNavigation', 'speakCurrentStatus', 'toggle-size-button','tour']; // 可以添加更多需要排除的按鈕ID
     const excludedClasses = ['no-reroute']; // 可以通過class排除
     
     // 檢查是否點擊的是按鈕

@@ -4,40 +4,252 @@
   <meta charset="utf-8">
   <title>YouBike Routing Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
+
   <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
     #map {
       height: 85vh;
       width: 100%;
     }
     #controls {
-      padding: 10px;
-      background-color: #f5f5f5;
+      background-color: #f5f5f5;;
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px dashed #ccc;
+      vertical-align: middle;
+    }
+    #left-section {
+      background-color: white;
+      display: flex;
+      align-items: center;
+      /* gap: 6px; */
+      flex-wrap: wrap;
+      border: 2px dashed #ccc;
+      border-radius: 20px;
+      vertical-align: middle;     
+    }
+    #left-section img {
+      height: 40px;
+    }
+    #left-section label {
+      font-weight: bold;
+      font-size: 18px;
+      margin-right: 8px;
+    }
+    /* #left-section input[type="text"] {
+      padding: 4px 8px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 200px;
+    } */
+    #left-section input[type="text"] {
+      background-color: rgba(0, 0, 0, 0.05); /* 半透明灰底 */
+      border: none;
+      padding: 6px 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      color: #333;
+      width: 200px;
+    }
+
+    /* #left-section input[type="number"] {
+      width: 50px;
+      text-align: center;
+      padding: 4px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    } */
+    #left-section input[type="number"] {
+      background-color: rgba(0, 0, 0, 0.05);
+      border: none;
+      text-align: center;
+      padding: 6px 10px;
+      font-size: 16px;
+      border-radius: 30%;
+      width: 25px;
+      height: 20px;
+      color: #555;
+    }
+
+    #left-section button {
+      background-color: #FFD24C;
+      border: none;
+      padding: 6px 14px;
+      font-size: 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #right-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      vertical-align: middle;
+    }
+    #right-section button {
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    #right-section img {
+      height: 28px;
+      transition: filter 0.2s;
+    }
+    .voice-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px;
+      background: #fff;
+      border: 2px solid black;
+      border-radius: 20px;
     }
     .info.legend {
       font-family: Arial, sans-serif;
       z-index: 1000;
       position: relative;
     }
+    /* Switch style */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #FFD24C;
+    }
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+    #toggleLock {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: transparent;
+      border: none;
+      z-index: 9999;
+    }
+    #toggleLock img {
+      width: 36px;
+      transition: filter 0.2s;
+    }
+    #toggleLock:active img{
+      filter: brightness(0.7);
+      transform: scale(1.1);
+    }
+    #speakCurrentStatus:active img {
+    filter: brightness(0.5) sepia(1) hue-rotate(-20deg);
+    transform: scale(1.1);
+  }
+    button img {
+      display: block;
+      pointer-events: none; /* 圖片不阻擋點擊事件 */
+    }
+
+
+
   </style>
 </head>
 <body>
   <div id="controls">
-    <label for="address">輸入目的地地址：</label>
-    <input type="text" id="address" placeholder="例如：台北車站">
-    <label for="group">同行人數：</label>
-    <input type="number" id="group" value="1" min="1" max="30" style="width: 60px; margin-right: 10px;">
-    <button onclick="geocodeAndRoute()">規劃路線</button>
-    <button id="toggleLock" class="no-reroute" onclick="toggleLock()">🔓 鎖定我</button>
-    <button id="toggleVoiceNavigation" class="no-reroute" onclick="toggleVoiceNavigation()">🎤 語音導航</button>
-    <button id="speakCurrentStatus" class="no-reroute" onclick="speakCurrentStatus()">📢 播報狀態</button>
-  </div>
-  <div id="map"></div>
+    <div id="left-section" data-step="1" data-intro="在這裡輸入目的地與同行人數，然後按下規劃路線，系統會為您規劃一條騎乘+步行的最佳路線。">
+      <!--Logo-->
+      <img src="/static/asset/logo.png" style="height: 45px;">
+      <!-- 地址與人數 -->
+      <label for="address"   style="margin-left: 6px;">目的地：</label>
+      <input type="text" id="address" placeholder="請輸入目的地（如：政大）"  style="margin-left: 0px;">
+      <label for="group"  style="margin-left: 20px;">同行人數：</label>
+      <input type="number" id="group" value="1" min="1" max="30"  style="margin-left: 0px;">
+      <button onclick="geocodeAndRoute()" style="margin-left: 12px; margin-right: 15px;">
+        <img src="/static/asset/route.png" style="height: 20px;">規劃路線
+      </button>
+    </div>
 
+    <!-- 右上角按鈕 -->
+    <div id="right-section" style="display: flex; align-items: center; gap: 0.5px;" >
+      <button id="speakCurrentStatus" class="no-reroute" onclick="speakCurrentStatus()"  data-step="2" data-intro="點擊可以手動刷新站點剩餘車位。">
+        <img src="/static/asset/renew.png" style="height: 35px; vertical-align: middle;">
+      </button>
+      <div style="display: flex; align-items: center; gap: 5px; vertical-align: middle;"  data-step="3" data-intro="點擊可以開啟語音導航。">
+        <img src="/static/asset/voice.png" style="height: 35px; vertical-align: middle;">
+        <label class="switch">
+          <input id="toggleVoiceNavigation" class="no-reroute" type="checkbox" onchange="toggleVoiceNavigation()">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <button id = tour class="no-reroute" onclick="startTour()">
+          <img src="/static/asset/q.png" style="height: 35px;">
+      </button>
+    </div>
+  </div>
+
+  <div id="map">
+    <!-- 地圖下方角落放人形鎖定我 -->
+    <button id="toggleLock" class="no-reroute" onclick="toggleLock()" style="position: absolute; bottom: 100px; right: 20px;" data-step="4" data-intro="點擊可以找到你在哪。">
+      <img src="/static/asset/now.png" style="width: 65px;">
+    </button>
+  </div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="/static/routeHint.js"></script>
   <script src="/static/stationInfo.js"></script>
   <script src="/static/speak.js"></script>
   <script src="/static/position.js"></script>
   <script src="/static/main.js"></script>
+  <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
+  <script>
+    let tourActive = false;
+
+    function startTour() {
+      tourActive = true;
+      introJs()
+        .oncomplete(() => {
+          tourActive = false;
+        })
+        .onexit(() => {
+          tourActive = false;
+        })
+        .start();
+    }
+  </script>
+
 </body>
 </html>
