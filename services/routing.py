@@ -54,7 +54,8 @@ class RoutingService:
                     'total_time_text': total_text,
                     'total_time_sec': total_sec,
                     'bike_route': bike_route,
-                    'walk_route': walk_route
+                    'walk_route': walk_route,
+                    'available': row['AvailableReturnBikes']
                 })
 
             except Exception as e:
@@ -66,4 +67,5 @@ class RoutingService:
             return None
 
         best = min(candidates, key=lambda x: x['total_time_sec'])
+        print(best)
         return best

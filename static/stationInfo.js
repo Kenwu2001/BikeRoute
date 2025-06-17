@@ -153,7 +153,7 @@ function createTransferStationMarker(station) {
   // 創建新的轉乘站標記
   stationMarker = L.marker([station.lat, station.lng], { icon: transferIcon })
     .addTo(window.map)
-    .bindPopup("🔁 轉乘點：還車後開始步行<br><b>站名：</b>" + station.address);
+    .bindPopup("🔁 <b>轉乘點</b>：還車後開始步行<br><b>📍 站名：</b>" + station.address + "<br><b>🅿️ 剩餘車位：</b>" + station.available + " 個");
   
   return stationMarker;
 }

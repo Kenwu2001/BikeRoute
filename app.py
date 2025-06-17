@@ -42,6 +42,7 @@ def get_route():
             'address': result['address'],
             'lat': result['lat'],
             'lng': result['lng'],
+            'available': result['available']
         },
         'bike_route': result['bike_route'],
         'walk_route': result['walk_route'],
