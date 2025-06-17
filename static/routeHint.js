@@ -95,7 +95,7 @@ function createRouteHintBox() {
             <div class="route-icon">⏳</div>
             <div class="route-text">等待路線規劃...</div>
           </div>
-          <div class="route-direction">導航準備中...</div>
+          <div class="route-direction">...</div>
         </div>
         <div class="route-info"></div>
       </div>
@@ -146,20 +146,22 @@ function createRouteHintBox() {
         div.style.minWidth = '87vw';
         toggleBtn.innerHTML = '➤';
 
-        dir.style.display = 'flex';
+        // dir.style.display = 'flex';
+        main.style.display = 'flex';
         content.style.alignItems = 'center';
         row.style.justifyContent = 'center';
         info.style.textAlign = 'center';
       } else {
         div.classList.add('collapsed');
         div.classList.remove('expanded');
-        div.style.minWidth = '200px';
+        div.style.minWidth = '400px';
         toggleBtn.innerHTML = '◀';
 
-        dir.style.display = 'none';
-        content.style.alignItems = 'flex-start';
-        row.style.justifyContent = 'flex-start';
-        info.style.textAlign = 'left';
+        // dir.style.display = 'none';
+        main.style.display = 'none';
+        content.style.alignItems = 'center';
+        row.style.justifyContent = 'left';
+        info.style.textAlign = 'center';
       }
 
       div.style.top = '0px';
