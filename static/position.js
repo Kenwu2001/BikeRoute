@@ -90,6 +90,8 @@ function onPositionUpdate(position) {
   // 更新路线提示
   if (window.currentDestination && window.currentRouteData) {
     updateRouteHint(parseFloat(userLat), parseFloat(userLng));
+    updateNavigationHint({ lat: parseFloat(userLat), lng: parseFloat(userLng) });
+
   }
   
   if (isLocked) {
@@ -142,6 +144,117 @@ function clearUserMarker() {
     userMarker = null;
   }
 }
+
+// ====== 簡易版導航 ======
+// 路線與導航最近點
+let lastClosestIndex = -1;
+let lastBCDistance = Infinity;
+
+function updateNavigationHint(currentLatLng) {
+  const route = window.currentRouteData?.bike_route || [];
+  if (route.length < 2) return;
+
+  let B, C;
+  let recalculate = false;
+
+  if (lastClosestIndex === -1) {
+    // 第一次跑，初始化最近點
+    recalculate = true;
+  } else {
+    B = route[lastClosestIndex];
+    C = route[lastClosestIndex + 1];
+
+    const distB = getDistance(currentLatLng, { lat: B[0], lng: B[1] });
+    const distC = C ? getDistance(currentLatLng, { lat: C[0], lng: C[1] }) : Infinity;
+
+    const avgDist = (distB + distC) / 2;
+
+    // 如果移動太多或明顯偏離 B，再重新計算
+    if (Math.abs(avgDist - lastBCDistance) > 5 || distB > lastBCDistance + 5) {
+      recalculate = true;
+    }
+  }
+
+  if (recalculate) {
+    let minDist = Infinity;
+    let closestIndex = -1;
+
+    route.forEach((pt, idx) => {
+      const d = getDistance(currentLatLng, { lat: pt[0], lng: pt[1] });
+      if (d < minDist) {
+        minDist = d;
+        closestIndex = idx;
+      }
+    });
+
+    lastClosestIndex = closestIndex;
+    B = route[closestIndex];
+    C = route[closestIndex + 1];
+
+    const distB = getDistance(currentLatLng, { lat: B[0], lng: B[1] });
+    const distC = C ? getDistance(currentLatLng, { lat: C[0], lng: C[1] }) : Infinity;
+    lastBCDistance = (distB + distC) / 2;
+  }
+
+  if (!C) return;
+
+  const A = [currentLatLng.lat, currentLatLng.lng];
+  const angle = calculateAngle(A, B, C);
+  const distToB = getDistance(currentLatLng, { lat: B[0], lng: B[1] });
+
+  let directionText = '';
+  if (-20 < angle < 20) {
+    directionText = `直行 ${Math.round(distToB)} 公尺`;
+  } else if (angle >= 20) {
+    directionText = `往前 ${Math.round(distToB)} 公尺後右轉`;
+  } else {
+    directionText = `往前 ${Math.round(distToB)} 公尺後左轉`;
+  }
+
+  document.querySelector('.route-direction').textContent = directionText;
+
+  // === 語音導航提示 ===
+  const thresholds = [50, 25, 10];
+  thresholds.forEach(threshold => {
+    if (distToB === threshold){
+      window.voiceNavigation.speak(directionText);
+      console.log(`語音導航：${directionText}`);
+    }
+  });
+}
+
+// 計算距離與角度
+function toRadians(deg) {
+  return deg * Math.PI / 180;
+}
+
+function getDistance(p1, p2) {
+  const R = 6371000; // Earth radius in meters
+  const dLat = toRadians(p2.lat - p1.lat);
+  const dLng = toRadians(p2.lng - p1.lng);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(p1.lat)) * Math.cos(toRadians(p2.lat)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calculateAngle(A, B, C) {
+  // 向量 AB 和 BC
+  const AB = [B[0] - A[0], B[1] - A[1]];
+  const BC = [C[0] - B[0], C[1] - B[1]];
+
+  // 點積與外積
+  const dot = AB[0] * BC[0] + AB[1] * BC[1];
+  const cross = AB[0] * BC[1] - AB[1] * BC[0]; // 2D 向量外積（純量）
+
+  // 計算帶方向的角度
+  const angleRad = Math.atan2(cross, dot); // 介於 -π 到 +π
+  const angleDeg = angleRad * (180 / Math.PI); // 換成角度，介於 -180 到 180
+
+  return angleDeg;
+}
+
 
 // 導出函數供其他模組使用
 window.positionModule = {

@@ -95,7 +95,7 @@ function createRouteHintBox() {
             <div class="route-icon">⏳</div>
             <div class="route-text">等待路線規劃...</div>
           </div>
-          <div class="route-direction"></div>
+          <div class="route-direction">導航準備中...</div>
         </div>
         <div class="route-info"></div>
       </div>
@@ -218,7 +218,7 @@ function createRouteHintBox() {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 35px;
       font-weight: 500;
       color: #333;
       border-left: 1px solid #ccc;
