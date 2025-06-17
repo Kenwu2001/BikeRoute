@@ -76,25 +76,46 @@ function getCurrentRouteHint(userLat, userLng) {
   }
 }
 
-// 创建路线提示框
 function createRouteHintBox() {
   if (routeHintBox) {
     map.removeControl(routeHintBox);
   }
 
   routeHintBox = L.control({ position: 'topright' });
-  
-  routeHintBox.onAdd = function() {
-    const div = L.DomUtil.create('div', 'route-hint-box');
+
+  routeHintBox.onAdd = function () {
+    const div = L.DomUtil.create('div', 'route-hint-box expanded');
     div.innerHTML = `
+      <div class="route-hint-header" style="display: flex; justify-content: flex-end;">
+        <button id="toggle-size-button" class="no-reroute" title="切換提示框大小">🗖</button>
+      </div>
       <div class="route-hint-content">
-        <div class="route-icon">⏳</div>
-        <div class="route-text">等待路線規劃...</div>
+        <div class="route-main-row">
+          <div class="route-main">
+            <div class="route-icon">⏳</div>
+            <div class="route-text">等待路線規劃...</div>
+          </div>
+          <div class="route-direction"></div>
+        </div>
         <div class="route-info"></div>
       </div>
     `;
-    
-    // 样式设定
+
+    const toggleBtn = div.querySelector('#toggle-size-button');
+    toggleBtn.style.cssText = `
+      background: white;
+      border: 1px solid #ccc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      align-self: center;
+    `;
+
+    let isExpanded = true;
+    toggleBtn.innerHTML = '➤';
+
+    // 框框樣式
     div.style.cssText = `
       background: rgba(255, 255, 255, 0.95);
       border: 2px solid #007cba;
@@ -102,57 +123,125 @@ function createRouteHintBox() {
       padding: 12px 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-width: 200px;
+      position: absolute;
+      right: 12px;
+      top: 0px;
+      z-index: 1000;
+      min-width: 87vw;
       max-width: 320px;
+      transition: all 0.3s ease;
     `;
-    
+
+    // 點擊切換大小
+    toggleBtn.onclick = () => {
+      isExpanded = !isExpanded;
+
+      const content = div.querySelector('.route-hint-content');
+      const row = div.querySelector('.route-main-row');
+      const info = div.querySelector('.route-info');
+
+      if (isExpanded) {
+        div.classList.add('expanded');
+        div.classList.remove('collapsed');
+        div.style.minWidth = '87vw';
+        toggleBtn.innerHTML = '➤';
+
+        dir.style.display = 'flex';
+        content.style.alignItems = 'center';
+        row.style.justifyContent = 'center';
+        info.style.textAlign = 'center';
+      } else {
+        div.classList.add('collapsed');
+        div.classList.remove('expanded');
+        div.style.minWidth = '200px';
+        toggleBtn.innerHTML = '◀';
+
+        dir.style.display = 'none';
+        content.style.alignItems = 'flex-start';
+        row.style.justifyContent = 'flex-start';
+        info.style.textAlign = 'left';
+      }
+
+      div.style.top = '0px';
+      div.style.right = '12px';
+    };
+
+    // route-hint-content
     const content = div.querySelector('.route-hint-content');
     content.style.cssText = `
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+      align-items: center;
     `;
-    
-    const mainContent = document.createElement('div');
-    mainContent.style.cssText = `
+
+    // 上半部排版
+    const row = div.querySelector('.route-main-row');
+    row.style.cssText = `
       display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      width: auto;
+      max-width: 90%;
+      margin: 0 auto;
+    `;
+
+    // 左側主要狀態欄
+    const main = div.querySelector('.route-main');
+    main.style.cssText = `
+      display: flex;
+      min-width: 0;
       align-items: center;
       gap: 12px;
     `;
-    
+
     const icon = div.querySelector('.route-icon');
     icon.style.cssText = `
       font-size: 24px;
       flex-shrink: 0;
     `;
-    
+
     const text = div.querySelector('.route-text');
     text.style.cssText = `
-      font-size: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
       line-height: 1.4;
+      color: #333;
+      text-align: left;
+    `;
+
+    // 右側導航文字欄
+    const dir = div.querySelector('.route-direction');
+    dir.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
       font-weight: 500;
       color: #333;
+      border-left: 1px solid #ccc;
+      padding-left: 12px;
     `;
-    
+
+    // 下方 info
     const info = div.querySelector('.route-info');
     info.style.cssText = `
-      font-size: 12px;
+      font-size: 13px;
       color: #666;
       border-top: 1px solid #eee;
       padding-top: 8px;
       margin-top: 4px;
+      text-align: center;
     `;
-    
-    // 重新組織結構
-    mainContent.appendChild(icon);
-    mainContent.appendChild(text);
-    content.insertBefore(mainContent, info);
-    
+
     return div;
   };
-  
+
   routeHintBox.addTo(map);
 }
+
 
 // 更新路线提示
 function updateRouteHint(userLat, userLng) {
