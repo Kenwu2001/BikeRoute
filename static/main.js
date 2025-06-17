@@ -362,7 +362,7 @@ async function reroute() {
       if (!isSameStation(previousStationUid, currentStationUid)) {
         console.log('🔄 轉乘站已改變，播報路線更新');
         setTimeout(() => {
-          window.voiceNavigation.announceRouteUpdate(data, previousStationUid);
+          window.voiceNavigation.announceRouteUpdate(data);
         }, 500);
       } else {
         console.log('🔇 轉乘站相同，跳過語音播報');

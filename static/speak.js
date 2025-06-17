@@ -295,6 +295,36 @@ class VoiceNavigation {
     this.speak(overview, 'high');
   }
 
+  // 播報路線更新概況
+  announceRouteUpdate(routeData, reason = '') {
+    if (!this.isEnabled) return;
+    
+    this.analyzeRoute(routeData);
+    
+    const { station } = routeData;
+    const bikeSegment = this.routeSegments.find(s => s.type === 'bike');
+    const walkSegment = this.routeSegments.find(s => s.type === 'walk');
+    
+    let overview = '路線已重新規劃。';
+    
+    // 如果有提供重新規劃的原因，加入說明
+    if (reason) {
+      overview += `${reason}。`;
+    }
+    
+    if (bikeSegment) {
+      const bikeDistance = Math.round(bikeSegment.totalDistance);
+      overview += `新路線：先騎乘共享單車${bikeDistance}公尺到達共享單車站。`;
+    }
+    
+    if (walkSegment) {
+      const walkDistance = Math.round(walkSegment.totalDistance);
+      overview += `接著步行${walkDistance}公尺到達目的地。`;
+    }
+    
+    this.speak(overview, 'high');
+  }
+
   // 根據當前位置提供導航指引
   updateNavigation(currentPosition) {
     if (!this.isEnabled || !currentPosition || this.routeSegments.length === 0) return;
