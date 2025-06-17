@@ -421,11 +421,6 @@ function setupButtonListeners() {
             }
           }
           
-          // 更新所有站點資訊
-          if (window.stationInfo) {
-            await window.stationInfo.updateAllStationInfo();
-          }
-          
           // 如果有目的地，重新規劃路線
           if (currentDestination) {
             // 檢查是否是被排除的按鈕
@@ -433,6 +428,12 @@ function setupButtonListeners() {
                 excludedClasses.some(cls => event.target.classList.contains(cls))) {
               console.log('🚫 跳過排除的按鈕:', event.target.id || event.target.textContent);
             } else {
+
+              // 更新所有站點資訊
+              if (window.stationInfo) {
+                await window.stationInfo.updateAllStationInfo();
+              }
+
               // === 修改：檢查是否是會影響路線規劃的按鈕 ===
               const routingTriggerButtons = ['group']; // group_size 更改按鈕
               const isRoutingTrigger = routingTriggerButtons.some(id => 
