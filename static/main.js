@@ -368,6 +368,11 @@ async function reroute() {
         console.log('🔇 轉乘站相同，跳過語音播報');
       }
     }
+    
+    // 目的地有變>>跳提示框
+    if (!isSameStation(previousStationUid, currentStationUid)) {
+      showRouteChangeAlert();
+    }
 
     // 強制重繪地圖
     setTimeout(() => {
@@ -562,6 +567,47 @@ function updateTrimmedRoutes(userLat, userLng) {
   // 畫出新路線
   bikeLine = L.polyline(trimmedBike, { color: 'blue', weight: 5 }).addTo(map).bindPopup('🚴 剩餘騎乘路段');
   walkLine = L.polyline(trimmedWalk, { color: 'green', weight: 4, dashArray: '5, 10' }).addTo(map).bindPopup('🚶 剩餘步行路段');
+}
+
+// === 目的地自動變更時跳出的提示框 ===
+function showRouteChangeAlert() {
+  const bgOverlay = document.createElement('div');
+  bgOverlay.style = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,0,0.3); z-index: 9998;`;
+
+  const alertDiv = document.createElement('div');
+  alertDiv.innerHTML = `
+    <div style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #eeeeee;
+      border: 2px solid #f0ad4e;
+      border-radius: 8px;
+      padding: 24px;
+      z-index: 9999;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    ">
+      <p style="font-size: 16px; font-weight: bold; color: #d9534f;">⚠️ 目的站點已變更，請確認新路線</p>
+      <div style="text-align: right;">
+        <button id="dismiss-alert-btn" style="margin-top: 12px; padding: 6px 12px; font-size: 14px;">OK</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(bgOverlay);
+  document.body.appendChild(alertDiv);
+
+  document.getElementById('dismiss-alert-btn').onclick = () => {
+    document.body.removeChild(bgOverlay);
+    document.body.removeChild(alertDiv);
+  };
+
+  // 語音說明
+  if (window.voiceNavigation) {
+    window.voiceNavigation.speak("目的站點已變更，請確認新路線");
+  }
 }
 
 // 供 position.js 調用
